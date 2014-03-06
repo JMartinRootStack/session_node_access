@@ -9,7 +9,6 @@ function anonymous_session_nodeaccess_permission() {
       'title' => t('Administer Anonymous session node access'),
       'description' => t('Grant per-session permissions for anonymous users to access nodes they created.'),
     ),
-
   );
 }
 
@@ -69,26 +68,19 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
     '#collapsed' => FALSE,
   );
 
-  $saved = FALSE;
   $settings = anonymous_session_nodeaccess_get_settings();
+  $settings_exist = ($settings <> FALSE) ? TRUE : FALSE;
 
-  if ($settings <> FALSE) {
-    $saved = TRUE;
-    $saved_content_types = $settings['content_types'];
-    $saved_permissions = $settings['permissions'];
-    $saved_published = $settings['published'];
-  }
-
-  $default_value = array();
   foreach (node_type_get_types() as $type) {
     $content_types[] = $type->type;
   }
   array_unshift($content_types, '');
   unset($content_types[0]);
 
+  $default_value = array();
   foreach($content_types as $i => $content_type) {
     $options[$i] = $content_type;
-    if ($saved && in_array($content_type, $saved_content_types)) {
+    if ($settings_exist && in_array($content_type, $settings['content_types'])) {
       $default_value[] = $i;
     }
   }
@@ -99,11 +91,10 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
     '#default_value' => $default_value,
   );
 
-  $default_value = array();
   $options = array(1 => 'view', 2 => 'update', 3 => 'delete');
-
+  $default_value = array();
   foreach ($options as $i => $permission) {
-    if ($saved && in_array($permission, $saved_permissions)) {
+    if ($settings_exist && in_array($permission, $settings['permissions'])) {
       $default_value[] = $i;
     }
   }
@@ -114,7 +105,7 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
     '#default_value' => $default_value,
   );
 
-  $published = $saved ? $saved_published : 0;
+  $published = $settings_exist ? $settings['published'] : 0;
   $form['published_fieldset']['published'] = array(
     '#title' => t('Take effect only on published nodes'),
     '#description' => t('Usually this is unchecked, as most use cases for this module require it to give temporary
@@ -157,9 +148,14 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
   }
 
   $settings['published'] = $form_state['values']['published'];
-  anonymous_session_nodeaccess_update_settings($settings);
-  $message = 'Your settings have been saved.';
-  drupal_set_message($message, 'status', 'FALSE');
+
+  if (anonymous_session_nodeaccess_update_settings($settings) <> FALSE) {
+    $message = 'Your settings have been saved.';
+    drupal_set_message($message, 'status', FALSE);
+  } else {
+    $message = 'There has been an error.';
+    drupal_set_message($message, 'error', FALSE);
+  }
 }
 
 /**
@@ -167,12 +163,12 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
  *
  * @param string $settings
  *   Array which contains settings submitted by the form.
+ * @return bool|\DatabaseStatementInterface
  */
 function anonymous_session_nodeaccess_update_settings($settings) {
 
-  if(!is_array($settings)) {
+  if(!is_array($settings))
     return FALSE;
-  }
 
   $result = db_update('anonymous_session_nodeaccess')
     ->fields(array(
@@ -188,6 +184,8 @@ function anonymous_session_nodeaccess_update_settings($settings) {
 
 /**
  * Returns an array with the module's current settings from the database.
+ *
+ * @return array
  */
 function anonymous_session_nodeaccess_get_settings() {
   $result = db_select('anonymous_session_nodeaccess', 'asn')
