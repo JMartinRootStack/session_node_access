@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * Implements hook_install().
+ *
+ * Creates default settings upon installation.
+ */
+function anonymous_session_nodeaccess_install() {
+  db_insert('anonymous_session_nodeaccess')
+    ->fields(array(
+      'id' => 0,
+      'content_types' => '',
+      'permissions' => '',
+      'published' => 0,
+    ))
+    ->execute();
+}
+
+/**
+ * Implements hook_schema().
+ */
+function anonymous_session_nodeaccess_schema() {
+  $schema['anonymous_session_nodeaccess'] = array (
+    'description' => t('Settings for Anonymous session node access module.'),
+    'fields' => array(
+      'id' => array(
+        'description' => t('The primary identifier.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'content_types' => array(
+        'description' => t('Serialized string holding the content types set.'),
+        'type' => 'blob',
+        'size' => 'normal',
+        'serialize' => FALSE,
+        'not null' => TRUE,
+      ),
+      'permissions' => array(
+        'description' => t('Serialized string holding the permission types set.'),
+        'type' => 'blob',
+        'size' => 'normal',
+        'serialize' => FALSE,
+        'not null' => TRUE,
+      ),
+      'published' => array(
+        'description' => t('Boolean holding the value of published..'),
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array(
+      'id',
+    ),
+  );
+  return $schema;
+}

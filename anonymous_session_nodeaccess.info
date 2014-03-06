@@ -1,0 +1,5 @@
+name = Anonymous Session Node Access
+description = Grants per-session permissions for anonymous users to access nodes they created.
+configure = admin/config/anonymous_session_nodeaccess
+core = 7.x
+version = 7.x-0.1-dev

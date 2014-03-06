@@ -1,0 +1,252 @@
+<?php
+
+/**
+ * Implements hook_permission().
+ */
+function anonymous_session_nodeaccess_permission() {
+  return array(
+    'administer anonymous session node access' => array(
+      'title' => t('Administer Anonymous session node access'),
+      'description' => t('Grant per-session permissions for anonymous users to access nodes they created.'),
+    ),
+
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function anonymous_session_nodeaccess_menu() {
+  $items = array();
+
+  // Admin configuration - Settings.
+  $items['admin/config/anonymous_session_nodeaccess'] = array(
+    'title' => 'Session based access',
+    'description' => 'Grant per-session permissions for anonymous users to access nodes they created.',
+    'access arguments' => array('administer anonymous session node access'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('anonymous_session_nodeaccess_form'),
+    'weight' => 1,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_form().
+ */
+function anonymous_session_nodeaccess_form($node, &$form_state) {
+  $form = array();
+  $form['moduletitle'] = array(
+    '#markup' => t('Anonymous session node access'),
+    '#prefix' => '<h2>',
+    '#suffix' => '</h2>',
+  );
+  $form['moduleinfo'] = array(
+    '#markup' => t('On this page you can grant additional permissions to anonymous users after they create a node.
+      Consider this use case: Content created by anonymous users is set to be not published until a mod reviews it.
+      With this module the user gets to view/edit/delete their freshly created content without it to be publicly
+      accessible.'),
+    '#prefix' => '<p>',
+    '#suffix' => '</p>',
+  );
+
+  $form['content_types_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Restrict by content type'),
+    '#description' => t('Grant per-session node permissions to anonymous users who create nodes of the following content types.
+      If a user creates a node of the checked content type, they will get access to it until their session expires.
+      Check at least one element.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['permissions_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Grant these permissions'),
+    '#description' => t('Anonymous users will be granted the following permissions to nodes they create.
+      These permissions will expire along with the user\'s session. Check at least one element.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  $saved = FALSE;
+  $settings = anonymous_session_nodeaccess_get_settings();
+
+  if ($settings <> FALSE) {
+    $saved = TRUE;
+    $saved_content_types = $settings['content_types'];
+    $saved_permissions = $settings['permissions'];
+    $saved_published = $settings['published'];
+  }
+
+  $default_value = array();
+  foreach (node_type_get_types() as $type) {
+    $content_types[] = $type->type;
+  }
+  array_unshift($content_types, '');
+  unset($content_types[0]);
+
+  foreach($content_types as $i => $content_type) {
+    $options[$i] = $content_type;
+    if ($saved && in_array($content_type, $saved_content_types)) {
+      $default_value[] = $i;
+    }
+  }
+
+  $form['content_types_fieldset']['content_types'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+
+  $default_value = array();
+  $options = array(1 => 'view', 2 => 'update', 3 => 'delete');
+
+  foreach ($options as $i => $permission) {
+    if ($saved && in_array($permission, $saved_permissions)) {
+      $default_value[] = $i;
+    }
+  }
+
+  $form['permissions_fieldset']['permissions'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+
+  $published = $saved ? $saved_published : 0;
+  $form['published_fieldset']['published'] = array(
+    '#title' => t('Take effect only on published nodes'),
+    '#description' => t('Usually this is unchecked, as most use cases for this module require it to give temporary
+      permissions to anonymous users to nodes they create but which are still unpublished by the moderator.'),
+    '#type' => 'checkbox',
+    '#default_value' => $published,
+  );
+
+  $form['options']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
+
+  $settings = array('content_types' => array(), 'permissions' => array());
+  $permissions = array( 1 => 'view', 'update', 'delete');
+  $content_types = array();
+
+  foreach ($permissions as $i => $permission) {
+    if ($form_state['values']['permissions'][$i] <> 0)  {
+      $settings['permissions'][] = $permission;
+    }
+  }
+
+  foreach (node_type_get_types() as $type) {
+    $content_types[] = $type->type;
+  }
+  array_unshift($content_types, '');
+  unset($content_types[0]);
+  foreach ($content_types as $i => $content_type) {
+    if ($form_state['values']['content_types'][$i] <> 0)  {
+      $settings['content_types'][] = $content_type;
+    }
+  }
+
+  $settings['published'] = $form_state['values']['published'];
+  anonymous_session_nodeaccess_update_settings($settings);
+  $message = 'Your settings have been saved.';
+  drupal_set_message($message, 'status', 'FALSE');
+}
+
+/**
+ * Imports the submitted form settings to the database.
+ *
+ * @param string $settings
+ *   Array which contains settings submitted by the form.
+ */
+function anonymous_session_nodeaccess_update_settings($settings) {
+
+  if(!is_array($settings)) {
+    return FALSE;
+  }
+
+  $result = db_update('anonymous_session_nodeaccess')
+    ->fields(array(
+      'content_types' => serialize($settings['content_types']),
+      'permissions' => serialize($settings['permissions']),
+      'published' => $settings['published'],
+    ))
+    ->condition('id', 0, '=')
+    ->execute();
+
+  return $result;
+}
+
+/**
+ * Returns an array with the module's current settings from the database.
+ */
+function anonymous_session_nodeaccess_get_settings() {
+  $result = db_select('anonymous_session_nodeaccess', 'asn')
+    ->fields('asn')
+    ->condition('id', '0', '=')
+    ->execute();
+
+  $settings = array();
+  while ($row = $result->fetchAssoc()) {
+    $settings[] = $row;
+  }
+
+  if(isset($settings[0])) {
+    unset($settings[0]['id']);
+    $settings[0]['content_types'] = unserialize($settings[0]['content_types']);
+    $settings[0]['permissions'] = unserialize($settings[0]['permissions']);
+    if (!is_array($settings[0]['content_types']) || !is_array($settings[0]['permissions']))  {
+        return FALSE;
+      }
+  } else return FALSE;
+
+  return $settings[0];
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Makes sure that content created by anonymous users gets referenced in their session variable
+ * to be checked for in hook_nde_access.
+ */
+function anonymous_session_nodeaccess_node_insert($node) {
+  if (isset($node->nid) && isset($node->uid) && $node->uid == 0) {
+    $_SESSION['anonymous_session_nodeaccess']['node_created'][] = $node->nid;
+  }
+}
+
+/**
+ * Implements hook_node_access().
+ *
+ * Grants access to anonymous users to view/edit/delete a node (depending on settings)
+ * in case they created it in their current session.
+ */
+function anonymous_session_nodeaccess_node_access($node, $op, $account) {
+
+  if(isset($node->type) && $account->uid == 0 && isset($_SESSION['anonymous_session_nodeaccess']['node_created'])) {
+    $settings = anonymous_session_nodeaccess_get_settings();
+    $content_types = isset($settings['content_types']) ? $settings['content_types'] : NULL;
+    $permissions = isset($settings['permissions']) ? $settings['permissions'] : NULL;
+    $published = isset($settings['published']) ? $settings['published'] : NULL;
+
+    if(isset($content_types, $permissions, $published)) {
+      if(in_array($op, $permissions)) {
+        if(in_array($node->type, $content_types)) {
+          if(in_array($node->nid, $_SESSION['anonymous_session_nodeaccess']['node_created'])) {
+            if($published == 0 || $node->status == 1)
+            return NODE_ACCESS_ALLOW;
+          }
+        }
+      }
+    }
+  }
+}
