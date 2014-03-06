@@ -21,7 +21,7 @@ function anonymous_session_nodeaccess_menu() {
   // Admin configuration - Settings.
   $items['admin/config/anonymous_session_nodeaccess'] = array(
     'title' => 'Session based access',
-    'description' => 'Grant per-session permissions for anonymous users to access nodes they created.',
+    'description' => t('Grant per-session permissions for anonymous users to access nodes they created.'),
     'access arguments' => array('administer anonymous session node access'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('anonymous_session_nodeaccess_form'),
@@ -150,11 +150,13 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
   $settings['published'] = $form_state['values']['published'];
 
   if (anonymous_session_nodeaccess_update_settings($settings) <> FALSE) {
-    $message = 'Your settings have been saved.';
+    $message = t('Your settings have been saved.');
     drupal_set_message($message, 'status', FALSE);
   } else {
-    $message = 'There has been an error.';
+    $message = t('There has been an error and it\'s been saved to the log.');
     drupal_set_message($message, 'error', FALSE);
+    $errormsg = t('Anonymous session nodeaccess module failed to save the settings to the database.');
+    watchdog('error', $errormsg, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL);
   }
 }
 
@@ -217,7 +219,7 @@ function anonymous_session_nodeaccess_get_settings() {
  * to be checked for in hook_nde_access.
  */
 function anonymous_session_nodeaccess_node_insert($node) {
-  if (isset($node->nid) && isset($node->uid) && $node->uid == 0) {
+  if (isset($node->nid, $node->uid) && $node->uid == 0) {
     $_SESSION['anonymous_session_nodeaccess']['node_created'][] = $node->nid;
   }
 }
@@ -245,6 +247,10 @@ function anonymous_session_nodeaccess_node_access($node, $op, $account) {
           }
         }
       }
+    } else {
+      $errormsg = t('Anonymous session nodeaccess module failed fetch its settings from the database and possibly
+        did not grant access to an anonymous user.');
+      watchdog('error', $errormsg, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL);
     }
   }
 }
