@@ -10,8 +10,8 @@
  *
  * Creates default settings upon installation.
  */
-function anonymous_session_nodeaccess_install() {
-  db_insert('anonymous_session_nodeaccess')
+function anonymous_session_node_access_install() {
+  db_insert('anonymous_session_node_access')
     ->fields(array(
       'id' => 0,
       'content_types' => '',
@@ -24,8 +24,8 @@ function anonymous_session_nodeaccess_install() {
 /**
  * Implements hook_schema().
  */
-function anonymous_session_nodeaccess_schema() {
-  $schema['anonymous_session_nodeaccess'] = array(
+function anonymous_session_node_access_schema() {
+  $schema['anonymous_session_node_access'] = array(
     'description' => 'Settings for Anonymous session node access module.',
     'fields' => array(
       'id' => array(

@@ -38,7 +38,7 @@ working as expected.
 * In order to have access to the module settings you need to grant it the
 appropriate permimssions in the permissions overview.
 * To configure the module, click on 'configure' next to its entry on the module
-overview page or visit the link admin/config/anonymous_session_nodeaccess.
+overview page or visit the link admin/config/anonymous_session_node_access.
 
 * Restrict by content type: here you can alter the modules functionality
 (granting access to anonymous to the content they created) by restricting it to
