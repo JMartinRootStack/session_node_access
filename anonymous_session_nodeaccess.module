@@ -180,7 +180,6 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
  * @return bool
  *   DatabaseStatementInterface
  */
-
 function anonymous_session_nodeaccess_update_settings($settings) {
 
   if (!is_array($settings)) {
