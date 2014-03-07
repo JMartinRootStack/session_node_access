@@ -165,7 +165,7 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
     if (!node_access('create', $content_type, user_load(0))) {
       $message = t("For these settings to apply correctly, anonymous users
         need to have content creation permission for the content of type: ") .
-        '<strong>' . $content_type . '</strong>' . '.';
+        "<strong>$content_type</strong>.";
       drupal_set_message($message, 'warning', FALSE);
     }
   }
@@ -175,15 +175,16 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
  * Imports the submitted form settings to the database.
  *
  * @param array $settings
- *  Array which contains settings submitted by the form.
+ *    Array which contains settings submitted by the form.
  *
  * @return bool
- *  DatabaseStatementInterface
+ *    DatabaseStatementInterface
  */
 function anonymous_session_nodeaccess_update_settings($settings) {
 
-  if (!is_array($settings))
+  if (!is_array($settings)) {
     return FALSE;
+  }
 
   $result = db_update('anonymous_session_nodeaccess')
     ->fields(array(
@@ -201,7 +202,7 @@ function anonymous_session_nodeaccess_update_settings($settings) {
  * Returns an array with the module's current settings from the database.
  *
  * @return array
- *  Partly serialized arrays.
+ *    Partly serialized arrays.
  */
 function anonymous_session_nodeaccess_get_settings() {
   $result = db_select('anonymous_session_nodeaccess', 'asn')
