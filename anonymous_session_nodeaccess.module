@@ -149,14 +149,18 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
 
   $settings['published'] = $form_state['values']['published'];
 
-  if (anonymous_session_nodeaccess_update_settings($settings) <> FALSE) {
-    $message = t('Your settings have been saved.');
-    drupal_set_message($message, 'status', FALSE);
-  } else {
-    $message = t('There has been an error and it\'s been saved to the log.');
-    drupal_set_message($message, 'error', FALSE);
-    $errormsg = t('Anonymous session nodeaccess module failed to save the settings to the database.');
-    watchdog('error', $errormsg, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL);
+  //Save settings into database.
+  anonymous_session_nodeaccess_update_settings($settings);
+  $message = t('Your settings have been saved.');
+  drupal_set_message($message, 'status', FALSE);
+
+  // Check if anonymous users have the 'create' permission for set content types, if not, display warning.
+  foreach($settings['content_types'] as $content_type) {
+    if (!node_access('create', $content_type, user_load(0))) {
+      $message = t("Anonymous users need to have content creation permission for the '$content_type' content
+        type for these settings to work correctly.");
+      drupal_set_message($message, 'warning', FALSE);
+    }
   }
 }
 
@@ -238,18 +242,22 @@ function anonymous_session_nodeaccess_node_access($node, $op, $account) {
     $permissions = isset($settings['permissions']) ? $settings['permissions'] : NULL;
     $published = isset($settings['published']) ? $settings['published'] : NULL;
 
+    // Check if settings allow granting permissions to this node.
     if(isset($content_types, $permissions, $published)) {
       if(in_array($op, $permissions)) {
         if(in_array($node->type, $content_types)) {
           if(in_array($node->nid, $_SESSION['anonymous_session_nodeaccess']['node_created'])) {
             if($published == 0 || $node->status == 1)
-            return NODE_ACCESS_ALLOW;
+
+              // Grant access for this user to this node.
+              return NODE_ACCESS_ALLOW;
           }
         }
       }
     } else {
+      //Save log entry informing about error getting values from the database.
       $errormsg = t('Anonymous session nodeaccess module failed fetch its settings from the database and possibly
-        did not grant access to an anonymous user.');
+        did not grant access to an anonymous user. Please reinstall the module.');
       watchdog('error', $errormsg, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL);
     }
   }
