@@ -164,8 +164,8 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
   foreach ($settings['content_types'] as $content_type) {
     if (!node_access('create', $content_type, user_load(0))) {
       $message = t("For these settings to apply correctly, anonymous users
-        need to have content creation permission for the content of type:") .
-        '<strong>' . $content_type . '</strong>';
+        need to have content creation permission for the content of type: ") .
+        '<strong>' . $content_type . '</strong>' . '.';
       drupal_set_message($message, 'warning', FALSE);
     }
   }
