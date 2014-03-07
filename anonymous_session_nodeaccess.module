@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Module implementing per-session node permissions for anonymous users.
+ */
+
+/**
  * Implements hook_permission().
  */
 function anonymous_session_nodeaccess_permission() {
@@ -21,7 +26,7 @@ function anonymous_session_nodeaccess_menu() {
   // Admin configuration - Settings.
   $items['admin/config/anonymous_session_nodeaccess'] = array(
     'title' => 'Session based access',
-    'description' => t('Grant per-session permissions for anonymous users to access nodes they created.'),
+    'description' => 'Grant per-session permissions for anonymous users to access nodes they created.',
     'access arguments' => array('administer anonymous session node access'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('anonymous_session_nodeaccess_form'),
@@ -78,7 +83,7 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
   unset($content_types[0]);
 
   $default_value = array();
-  foreach($content_types as $i => $content_type) {
+  foreach ($content_types as $i => $content_type) {
     $options[$i] = $content_type;
     if ($settings_exist && in_array($content_type, $settings['content_types'])) {
       $default_value[] = $i;
@@ -116,7 +121,7 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
 
   $form['options']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save'),
+    '#value' => t('Save configuration'),
   );
   return $form;
 }
@@ -127,11 +132,11 @@ function anonymous_session_nodeaccess_form($node, &$form_state) {
 function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
 
   $settings = array('content_types' => array(), 'permissions' => array());
-  $permissions = array( 1 => 'view', 'update', 'delete');
+  $permissions = array(1 => 'view', 'update', 'delete');
   $content_types = array();
 
   foreach ($permissions as $i => $permission) {
-    if ($form_state['values']['permissions'][$i] <> 0)  {
+    if ($form_state['values']['permissions'][$i] <> 0) {
       $settings['permissions'][] = $permission;
     }
   }
@@ -142,23 +147,25 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
   array_unshift($content_types, '');
   unset($content_types[0]);
   foreach ($content_types as $i => $content_type) {
-    if ($form_state['values']['content_types'][$i] <> 0)  {
+    if ($form_state['values']['content_types'][$i] <> 0) {
       $settings['content_types'][] = $content_type;
     }
   }
 
   $settings['published'] = $form_state['values']['published'];
 
-  //Save settings into database.
+  // Save settings into the database.
   anonymous_session_nodeaccess_update_settings($settings);
   $message = t('Your settings have been saved.');
   drupal_set_message($message, 'status', FALSE);
 
-  // Check if anonymous users have the 'create' permission for set content types, if not, display warning.
-  foreach($settings['content_types'] as $content_type) {
+  // Check if anonymous users have the 'create' permission for set content
+  // types, if not, display a warning.
+  foreach ($settings['content_types'] as $content_type) {
     if (!node_access('create', $content_type, user_load(0))) {
-      $message = t("Anonymous users need to have content creation permission for the '$content_type' content
-        type for these settings to work correctly.");
+      $message = t("For these settings to apply correctly, anonymous users
+        need to have content creation permission for the content of type:") .
+        '<strong>' . $content_type . '</strong>';
       drupal_set_message($message, 'warning', FALSE);
     }
   }
@@ -167,13 +174,15 @@ function anonymous_session_nodeaccess_form_submit($form, &$form_state) {
 /**
  * Imports the submitted form settings to the database.
  *
- * @param string $settings
- *   Array which contains settings submitted by the form.
- * @return bool|\DatabaseStatementInterface
+ * @param array $settings
+ *  Array which contains settings submitted by the form.
+ *
+ * @return bool
+ *  DatabaseStatementInterface
  */
 function anonymous_session_nodeaccess_update_settings($settings) {
 
-  if(!is_array($settings))
+  if (!is_array($settings))
     return FALSE;
 
   $result = db_update('anonymous_session_nodeaccess')
@@ -192,6 +201,7 @@ function anonymous_session_nodeaccess_update_settings($settings) {
  * Returns an array with the module's current settings from the database.
  *
  * @return array
+ *  Partly serialized arrays.
  */
 function anonymous_session_nodeaccess_get_settings() {
   $result = db_select('anonymous_session_nodeaccess', 'asn')
@@ -204,14 +214,18 @@ function anonymous_session_nodeaccess_get_settings() {
     $settings[] = $row;
   }
 
-  if(isset($settings[0])) {
+  if (isset($settings[0])) {
     unset($settings[0]['id']);
     $settings[0]['content_types'] = unserialize($settings[0]['content_types']);
     $settings[0]['permissions'] = unserialize($settings[0]['permissions']);
-    if (!is_array($settings[0]['content_types']) || !is_array($settings[0]['permissions']))  {
-        return FALSE;
-      }
-  } else return FALSE;
+    if (!is_array($settings[0]['content_types'])
+      || !is_array($settings[0]['permissions'])) {
+      return FALSE;
+    }
+  }
+  else {
+    return FALSE;
+  }
 
   return $settings[0];
 }
@@ -219,8 +233,8 @@ function anonymous_session_nodeaccess_get_settings() {
 /**
  * Implements hook_node_insert().
  *
- * Makes sure that content created by anonymous users gets referenced in their session variable
- * to be checked for in hook_nde_access.
+ * Makes sure that content created by anonymous users gets referenced in their
+ * session variable to be checked for in hook_nde_access.
  */
 function anonymous_session_nodeaccess_node_insert($node) {
   if (isset($node->nid, $node->uid) && $node->uid == 0) {
@@ -231,34 +245,42 @@ function anonymous_session_nodeaccess_node_insert($node) {
 /**
  * Implements hook_node_access().
  *
- * Grants access to anonymous users to view/edit/delete a node (depending on settings)
- * in case they created it in their current session.
+ * Grants access to anonymous users to view/edit/delete a node (depending
+ * on settings) in case they created it in their current session.
  */
 function anonymous_session_nodeaccess_node_access($node, $op, $account) {
 
-  if(isset($node->type) && $account->uid == 0 && isset($_SESSION['anonymous_session_nodeaccess']['node_created'])) {
+  if (isset($node->type) && $account->uid == 0 &&
+      isset($_SESSION['anonymous_session_nodeaccess']['node_created'])) {
     $settings = anonymous_session_nodeaccess_get_settings();
-    $content_types = isset($settings['content_types']) ? $settings['content_types'] : NULL;
-    $permissions = isset($settings['permissions']) ? $settings['permissions'] : NULL;
-    $published = isset($settings['published']) ? $settings['published'] : NULL;
+    $content_types = isset($settings['content_types']) ?
+      $settings['content_types'] : NULL;
+    $permissions = isset($settings['permissions']) ?
+      $settings['permissions'] : NULL;
+    $published = isset($settings['published']) ?
+      $settings['published'] : NULL;
 
     // Check if settings allow granting permissions to this node.
-    if(isset($content_types, $permissions, $published)) {
-      if(in_array($op, $permissions)) {
-        if(in_array($node->type, $content_types)) {
-          if(in_array($node->nid, $_SESSION['anonymous_session_nodeaccess']['node_created'])) {
-            if($published == 0 || $node->status == 1)
+    if (isset($content_types, $permissions, $published)) {
+      if (in_array($op, $permissions)) {
+        if (in_array($node->type, $content_types)) {
+          if (in_array($node->nid,
+            $_SESSION['anonymous_session_nodeaccess']['node_created'])) {
+            if ($published == 0 || $node->status == 1) {
 
               // Grant access for this user to this node.
               return NODE_ACCESS_ALLOW;
+            }
           }
         }
       }
-    } else {
-      //Save log entry informing about error getting values from the database.
-      $errormsg = t('Anonymous session nodeaccess module failed fetch its settings from the database and possibly
-        did not grant access to an anonymous user. Please reinstall the module.');
-      watchdog('error', $errormsg, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL);
+    }
+    else {
+      // Save log entry informing about error getting values from the database.
+      $errormsg = t('Anonymous session nodeaccess module failed fetch its
+        settings from the database and possibly did not grant access to
+        an anonymous user. Please reinstall the module.');
+      watchdog('Anonymous session node access', $errormsg);
     }
   }
 }
