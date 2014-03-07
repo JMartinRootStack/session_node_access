@@ -202,7 +202,7 @@ function anonymous_session_nodeaccess_update_settings($settings) {
  * Returns an array with the module's current settings from the database.
  *
  * @return array
- *   Partly serialized arrays.
+ *   Partly serialized arrays containing module settings from db.
  */
 function anonymous_session_nodeaccess_get_settings() {
   $result = db_select('anonymous_session_nodeaccess', 'asn')
