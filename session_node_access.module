@@ -175,7 +175,7 @@ function session_node_access_form_submit($form, &$form_state) {
   $settings = array(
     'content_types' => array(),
     'permissions' => array(),
-    'user_roles' => array()
+    'user_roles' => array(),
   );
 
   // Prepare permission settings for submission.
