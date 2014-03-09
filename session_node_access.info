@@ -1,0 +1,4 @@
+name = Session Node Access
+description = Grants per-session permissions for users to access nodes they created.
+configure = admin/config/session_node_access
+core = 7.x

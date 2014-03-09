@@ -1,0 +1,350 @@
+<?php
+
+/**
+ * @file
+ * Module implementing per-session node permissions for users.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function session_node_access_permission() {
+  return array(
+    'administer session node access' => array(
+      'title' => t('Administer Session node access'),
+      'description' => t('Grant per-session permissions for users to access nodes they created.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function session_node_access_menu() {
+  $items = array();
+
+  // Admin configuration - Settings.
+  $items['admin/config/session_node_access'] = array(
+    'title' => 'Session based access',
+    'description' => 'Grant per-session permissions for users to access nodes they created.',
+    'access arguments' => array('administer session node access'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('session_node_access_form'),
+    'weight' => 1,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_form().
+ */
+function session_node_access_form($node, &$form_state) {
+  $form = array();
+  $form['moduletitle'] = array(
+    '#markup' => t('Session node access'),
+    '#prefix' => '<h2>',
+    '#suffix' => '</h2>',
+  );
+
+  // Fieldsets.
+  $form['moduleinfo'] = array(
+    '#markup' => t('On this page you can grant additional permissions to users after they create a node.
+      Consider this use case: Content created by anonymous users is set to be not published until a mod reviews it.
+      With this module the user gets to view/edit/delete their freshly created content without it to be publicly
+      accessible.'),
+    '#prefix' => '<p>',
+    '#suffix' => '</p>',
+  );
+  $form['content_types_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Restrict by content type'),
+    '#description' => t('Grant per-session node permissions to certian users who create nodes of the following content types.
+      If a user creates a node of the checked content type, they will get access to it until their session expires.
+      Check at least one element.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['user_roles_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Restrict by user roles'),
+    '#description' => t('Grant per-session node permissions to all users assigned to the following roles.
+      <strong>Note:</strong> In most cases checking roles other than \'anonymous\' won\'t be necessary because of the available \'View own unpublished\'
+      options in the permissions tab. Check at least one element.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  $form['permissions_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Grant these permissions'),
+    '#description' => t('Said users will be granted the following permissions to nodes they create.
+      These permissions will expire along with the user\'s session. Check at least one element.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  // Get all settings from the databaase.
+  $settings = session_node_access_get_settings();
+  $settings_exist = ($settings <> FALSE) ? TRUE : FALSE;
+
+  // Prepare content type settings for display.
+  foreach (node_type_get_types() as $type) {
+    $content_types[] = $type->type;
+  }
+  array_unshift($content_types, '');
+  unset($content_types[0]);
+
+  $default_value = array();
+  foreach ($content_types as $i => $content_type) {
+    $options[$i] = $content_type;
+    if ($settings_exist && in_array($content_type,
+      $settings['content_types'])) {
+      $default_value[] = $i;
+    }
+  }
+
+  // Display content type settings.
+  $form['content_types_fieldset']['content_types'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+
+  // Prepare user role settings for display.
+  foreach (user_roles() as $rid => $role) {
+    $user_roles[] = $role;
+  }
+  array_unshift($user_roles, '');
+  unset($user_roles[0]);
+
+  $default_value = array();
+  foreach ($user_roles as $i => $user_role) {
+    $options[$i] = $user_role;
+    if ($settings_exist && in_array($user_role,
+        $settings['user_roles'])) {
+      $default_value[] = $i;
+    }
+  }
+
+  // Display user role settings.
+  $form['user_roles_fieldset']['user_roles'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+
+  // Prepare permissions settings for display.
+  $options = array(1 => 'view', 2 => 'update', 3 => 'delete');
+  $default_value = array();
+  foreach ($options as $i => $permission) {
+    if ($settings_exist && in_array($permission, $settings['permissions'])) {
+      $default_value[] = $i;
+    }
+  }
+
+  // Display permission settings.
+  $form['permissions_fieldset']['permissions'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+
+  // Prepare publishing settings for display.
+  $published = $settings_exist ? $settings['published'] : 0;
+
+  // Display publishing settings.
+  $form['published_fieldset']['published'] = array(
+    '#title' => t('Take effect only on published nodes'),
+    '#description' => t('Usually this is unchecked, as most use cases for this module require it to give temporary
+      permissions to users to nodes they create but which are still unpublished by the moderator.'),
+    '#type' => 'checkbox',
+    '#default_value' => $published,
+  );
+
+  $form['options']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function session_node_access_form_submit($form, &$form_state) {
+
+  $settings = array('content_types' => array(), 'permissions' => array(),
+    'user_roles' => array());
+
+  // Prepare permission settings for submission.
+  $permissions = array(1 => 'view', 'update', 'delete');
+  foreach ($permissions as $i => $permission) {
+    if ($form_state['values']['permissions'][$i] <> 0) {
+      $settings['permissions'][] = $permission;
+    }
+  }
+
+  // Prepare content type settings for submission.
+  $content_types = array();
+  foreach (node_type_get_types() as $type) {
+    $content_types[] = $type->type;
+  }
+  array_unshift($content_types, '');
+  unset($content_types[0]);
+  foreach ($content_types as $i => $content_type) {
+    if ($form_state['values']['content_types'][$i] <> 0) {
+      $settings['content_types'][] = $content_type;
+    }
+  }
+
+  // Prepare user role settings for submission.
+  $user_roles = array();
+  foreach (user_roles() as $rid => $role) {
+    $user_roles[] = $role;
+  }
+  array_unshift($user_roles, '');
+  unset($user_roles[0]);
+
+  foreach ($user_roles as $i => $user_role) {
+    if ($form_state['values']['user_roles'][$i] <> 0) {
+      $settings['user_roles'][] = $user_role;
+    }
+  }
+
+  // Prepare permission settings for submission.
+  $settings['published'] = $form_state['values']['published'];
+
+  // Submit settings into the database.
+  session_node_access_update_settings($settings);
+  $message = t('Your settings have been saved.');
+  drupal_set_message($message, 'status', FALSE);
+
+  //todo: Change warning functionality to check for set roles.
+  // Check if user roles have the 'create' permission for set content
+  // types, if not, display a warning.
+/*  foreach ($settings['content_types'] as $content_type) {
+    foreach ($settings['user_roles'] as $user_role) {
+      if (!user_access("create $content_type content")) {
+        $message = t("For these settings to apply correctly, $user_role
+          needs to have content creation permission for the content of type: ") .
+          "<strong>$content_type</strong>.";
+        drupal_set_message($message, 'warning', FALSE);
+      }
+    }
+  }*/
+}
+
+/**
+ * Imports the submitted form settings into the database.
+ *
+ * @param array $settings
+ *   Array which contains settings submitted by the form.
+ *
+ * @return bool
+ *   DatabaseStatementInterface
+ */
+function session_node_access_update_settings($settings) {
+
+  if (!is_array($settings)) {
+    return FALSE;
+  }
+
+  $result = db_update('session_node_access')
+    ->fields(array(
+      'content_types' => serialize($settings['content_types']),
+      'permissions' => serialize($settings['permissions']),
+      'user_roles' => serialize($settings['user_roles']),
+      'published' => $settings['published'],
+    ))
+    ->condition('id', 0, '=')
+    ->execute();
+
+  return $result;
+}
+
+/**
+ * Returns an array with the module's current settings from the database.
+ *
+ * @return array
+ *   Partly serialized arrays containing module settings from db.
+ */
+function session_node_access_get_settings() {
+  $result = db_select('session_node_access', 'sna')
+    ->fields('sna')
+    ->condition('id', '0', '=')
+    ->execute();
+
+  $settings = array();
+  while ($row = $result->fetchAssoc()) {
+    $settings[] = $row;
+  }
+
+  if (isset($settings[0])) {
+    unset($settings[0]['id']);
+    $unserialize_all = array ('content_types', 'permissions', 'user_roles');
+    foreach ($unserialize_all as $unserialize_this) {
+      $settings[0][$unserialize_this] =
+        unserialize($settings[0][$unserialize_this]);
+      if (!is_array($settings[0][$unserialize_this])) {
+        return FALSE;
+      }
+    }
+  }
+  else {
+    return FALSE;
+  }
+
+  return $settings[0];
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Makes sure that content created by users gets referenced in their
+ * session variable to be checked for in hook_nde_access.
+ */
+function session_node_access_node_insert($node) {
+
+  // todo: Add user role check?
+  if (isset($node->nid, $node->uid)) {
+    $_SESSION['session_node_access']['node_created'][] = $node->nid;
+  }
+}
+
+/**
+ * Implements hook_node_access().
+ *
+ * Grants access to users to view/edit/delete a node (depending
+ * on settings) in case they created it in their current session.
+ */
+function session_node_access_node_access($node, $op, $account) {
+  if (isset($node->type) &&
+    isset($_SESSION['session_node_access']['node_created'])) {
+    $settings = session_node_access_get_settings();
+
+    if($settings <> FALSE) {
+      // Check if settings allow granting permissions to this node.
+      if (in_array($op, $settings['permissions'])) {
+        if (in_array($node->type, $settings['content_types'])) {
+          if(count(array_intersect($settings['user_roles'],
+              $account->roles)) > 0) {
+            if (in_array($node->nid,
+              $_SESSION['session_node_access']['node_created'])) {
+              if ($settings['published'] == 0 || $node->status == 1) {
+
+                // Grant access for this user to this node.
+                return NODE_ACCESS_ALLOW;
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      // Save log entry informing about error getting values from the database.
+      $errormsg = t('Session node_access module failed to fetch its
+        settings from the database and possibly did not grant access to the
+        created node. Please reinstall the module.');
+      watchdog('Session node access', $errormsg);
+    }
+  }
+}

@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Install and uninstall functions for the Anonymous session node access.
+ * Install and uninstall functions for the Session node access.
  */
 
 /**
@@ -10,11 +10,12 @@
  *
  * Creates default settings upon installation.
  */
-function anonymous_session_node_access_install() {
-  db_insert('anonymous_session_node_access')
+function session_node_access_install() {
+  db_insert('session_node_access')
     ->fields(array(
       'id' => 0,
       'content_types' => '',
+      'user_roles' => '',
       'permissions' => '',
       'published' => 0,
     ))
@@ -24,9 +25,9 @@ function anonymous_session_node_access_install() {
 /**
  * Implements hook_schema().
  */
-function anonymous_session_node_access_schema() {
-  $schema['anonymous_session_node_access'] = array(
-    'description' => 'Settings for Anonymous session node access module.',
+function session_node_access_schema() {
+  $schema['session_node_access'] = array(
+    'description' => 'Settings for Session node access module.',
     'fields' => array(
       'id' => array(
         'description' => 'The primary identifier.',
@@ -36,6 +37,13 @@ function anonymous_session_node_access_schema() {
       ),
       'content_types' => array(
         'description' => 'Serialized string holding the content types set.',
+        'type' => 'blob',
+        'size' => 'normal',
+        'serialize' => FALSE,
+        'not null' => TRUE,
+      ),
+      'user_roles' => array(
+        'description' => 'Serialized string holding the user types set.',
         'type' => 'blob',
         'size' => 'normal',
         'serialize' => FALSE,
