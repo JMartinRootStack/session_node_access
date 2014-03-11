@@ -13,6 +13,7 @@ function session_node_access_permission() {
     'administer session node access' => array(
       'title' => t('Administer Session node access'),
       'description' => t('Grant per-session permissions for users to access nodes they created.'),
+      'restrict access' => TRUE,
     ),
   );
 }
@@ -36,9 +37,11 @@ function session_node_access_menu() {
 }
 
 /**
- * Implements hook_form().
+ * Form constructor for the module configuration page.
+ *
+ * @see session_node_access_form_submit()
  */
-function session_node_access_form($node, &$form_state) {
+function session_node_access_form($form, &$form_state) {
   $form = array();
   $form['moduletitle'] = array(
     '#markup' => t('Session node access'),
@@ -168,7 +171,9 @@ function session_node_access_form($node, &$form_state) {
 }
 
 /**
- * Implements hook_form_submit().
+ * Form submission handler for the module configuration page.
+ *
+ * Submits settings to database and displays a confirmation message.
  */
 function session_node_access_form_submit($form, &$form_state) {
 
@@ -246,7 +251,7 @@ function session_node_access_update_settings($settings) {
       'user_roles' => serialize($settings['user_roles']),
       'published' => $settings['published'],
     ))
-    ->condition('id', 0, '=')
+    ->condition('id', 0)
     ->execute();
 
   return $result;
@@ -259,10 +264,7 @@ function session_node_access_update_settings($settings) {
  *   Partly serialized arrays containing module settings from db.
  */
 function session_node_access_get_settings() {
-  $result = db_select('session_node_access', 'sna')
-    ->fields('sna')
-    ->condition('id', '0', '=')
-    ->execute();
+  $result = db_query('SELECT * FROM session_node_access WHERE id = 0');
 
   $settings = array();
   while ($row = $result->fetchAssoc()) {
