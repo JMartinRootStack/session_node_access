@@ -261,10 +261,11 @@ function session_node_access_update_settings($settings) {
  * Returns an array with the module's current settings from the database.
  *
  * @return array
- *   Partly serialized arrays containing module settings from db.
+ *   Partly serialized arrays containing module settings from db
+ *   or FALSE if no data in table (module just installed) or error.
  */
 function session_node_access_get_settings() {
-  $result = db_query('SELECT * FROM session_node_access WHERE id = 0');
+  $result = db_query('SELECT * FROM {session_node_access} WHERE id = 0');
 
   $settings = array();
   while ($row = $result->fetchAssoc()) {
@@ -315,6 +316,7 @@ function session_node_access_node_access($node, $op, $account) {
     $settings = session_node_access_get_settings();
 
     if ($settings <> FALSE) {
+
       // Check if settings allow granting permissions to this node.
       if (in_array($op, $settings['permissions'])) {
         if (in_array($node->type, $settings['content_types'])) {
