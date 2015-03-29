@@ -96,11 +96,12 @@ function session_node_access_form($form, &$form_state) {
   array_unshift($content_types, '');
   unset($content_types[0]);
 
+  $options = array();
   $default_value = array();
   foreach ($content_types as $i => $content_type) {
     $options[$i] = $content_type;
     if ($settings_exist && in_array($content_type,
-      $settings['content_types'])) {
+        $settings['content_types'])) {
       $default_value[] = $i;
     }
   }
@@ -119,6 +120,7 @@ function session_node_access_form($form, &$form_state) {
   array_unshift($user_roles, '');
   unset($user_roles[0]);
 
+  $options = array();
   $default_value = array();
   foreach ($user_roles as $i => $user_role) {
     $options[$i] = $user_role;
@@ -291,6 +293,22 @@ function session_node_access_get_settings() {
 }
 
 /**
+ * Checks if currently logged in user has access to a node.
+ *
+ * @param int $nid
+ *   The ID of the node to be checked if accessible by currently logged in user.
+ *
+ * @return bool
+ *   True if user has access, false if they do not.
+ */
+function session_node_access_user_node_access($nid) {
+  if (isset($_SESSION['session_node_access']['nodes_created']) && in_array($nid, $_SESSION['session_node_access']['nodes_created'])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
  * Implements hook_node_insert().
  *
  * Makes sure that content created by users gets referenced in their
@@ -300,7 +318,7 @@ function session_node_access_node_insert($node) {
 
   // todo: Add user role check?
   if (isset($node->nid, $node->uid)) {
-    $_SESSION['session_node_access']['node_created'][] = $node->nid;
+    $_SESSION['session_node_access']['nodes_created'][] = $node->nid;
   }
 }
 
@@ -312,34 +330,33 @@ function session_node_access_node_insert($node) {
  */
 function session_node_access_node_access($node, $op, $account) {
   if (isset($node->type) &&
-    isset($_SESSION['session_node_access']['node_created'])) {
+    isset($_SESSION['session_node_access']['nodes_created'])) {
+
     $settings = session_node_access_get_settings();
-
-    if ($settings <> FALSE) {
-
-      // Check if settings allow granting permissions to this node.
-      if (in_array($op, $settings['permissions'])) {
-        if (in_array($node->type, $settings['content_types'])) {
-          if (count(array_intersect($settings['user_roles'],
-              $account->roles)) > 0) {
-            if (in_array($node->nid,
-              $_SESSION['session_node_access']['node_created'])) {
-              if ($settings['published'] == 0 || $node->status == 1) {
-
-                // Grant access for this user to this node.
-                return NODE_ACCESS_ALLOW;
-              }
-            }
-          }
-        }
-      }
-    }
-    else {
+    if (!$settings) {
       // Save log entry informing about error getting values from the database.
       $errormsg = t('Session node_access module failed to fetch its
         settings from the database and possibly did not grant access to the
         created node. Please reinstall the module.');
       watchdog('Session node access', $errormsg);
+      return NODE_ACCESS_IGNORE;
+    }
+
+    // Check if settings allow granting permissions to this node.
+    if (in_array($op, $settings['permissions'])) {
+      if (in_array($node->type, $settings['content_types'])) {
+        if (count(array_intersect($settings['user_roles'],
+            $account->roles)) > 0) {
+          if (session_node_access_user_node_access($node->nid)) {
+            if ($settings['published'] == 0 || $node->status == 1) {
+
+              // Grant access for this user to this node.
+              return NODE_ACCESS_ALLOW;
+            }
+          }
+        }
+      }
     }
   }
+  return NODE_ACCESS_IGNORE;
 }
