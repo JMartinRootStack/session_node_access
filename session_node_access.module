@@ -85,9 +85,8 @@ function session_node_access_form($form, &$form_state) {
     '#collapsed' => FALSE,
   );
 
-  // Get all settings from the databaase.
-  $settings = session_node_access_get_settings();
-  $settings_exist = ($settings <> FALSE) ? TRUE : FALSE;
+  // Get all settings from the variable.
+  $settings = variable_get('session_node_access_settings', FALSE);
 
   // Prepare content type settings for display.
   foreach (node_type_get_types() as $type) {
@@ -100,7 +99,7 @@ function session_node_access_form($form, &$form_state) {
   $default_value = array();
   foreach ($content_types as $i => $content_type) {
     $options[$i] = $content_type;
-    if ($settings_exist && in_array($content_type,
+    if (isset($settings['content_types']) && in_array($content_type,
         $settings['content_types'])) {
       $default_value[] = $i;
     }
@@ -124,7 +123,7 @@ function session_node_access_form($form, &$form_state) {
   $default_value = array();
   foreach ($user_roles as $i => $user_role) {
     $options[$i] = $user_role;
-    if ($settings_exist && in_array($user_role,
+    if (isset($settings['user_roles']) && in_array($user_role,
         $settings['user_roles'])) {
       $default_value[] = $i;
     }
@@ -141,7 +140,7 @@ function session_node_access_form($form, &$form_state) {
   $options = array(1 => 'view', 2 => 'update', 3 => 'delete');
   $default_value = array();
   foreach ($options as $i => $permission) {
-    if ($settings_exist && in_array($permission, $settings['permissions'])) {
+    if (isset($settings['permissions']) && in_array($permission, $settings['permissions'])) {
       $default_value[] = $i;
     }
   }
@@ -154,7 +153,7 @@ function session_node_access_form($form, &$form_state) {
   );
 
   // Prepare publishing settings for display.
-  $published = $settings_exist ? $settings['published'] : 0;
+  $published = isset($settings['published']) ? $settings['published'] : 0;
 
   // Display publishing settings.
   $form['published_fieldset']['published'] = array(
@@ -178,12 +177,7 @@ function session_node_access_form($form, &$form_state) {
  * Submits settings to database and displays a confirmation message.
  */
 function session_node_access_form_submit($form, &$form_state) {
-
-  $settings = array(
-    'content_types' => array(),
-    'permissions' => array(),
-    'user_roles' => array(),
-  );
+  $settings = array();
 
   // Prepare permission settings for submission.
   $permissions = array(1 => 'view', 'update', 'delete');
@@ -224,72 +218,11 @@ function session_node_access_form_submit($form, &$form_state) {
   $settings['published'] = $form_state['values']['published'];
 
   // Submit settings into the database.
-  session_node_access_update_settings($settings);
+  variable_set('session_node_access_settings', $settings);
   $message = t('Your settings have been saved.');
   drupal_set_message($message, 'status', FALSE);
 
   // todo: Change warning functionality to check for set roles.
-}
-
-/**
- * Imports the submitted form settings into the database.
- *
- * @param array $settings
- *   Array which contains settings submitted by the form.
- *
- * @return bool
- *   DatabaseStatementInterface
- */
-function session_node_access_update_settings($settings) {
-
-  if (!is_array($settings)) {
-    return FALSE;
-  }
-
-  $result = db_update('session_node_access')
-    ->fields(array(
-      'content_types' => serialize($settings['content_types']),
-      'permissions' => serialize($settings['permissions']),
-      'user_roles' => serialize($settings['user_roles']),
-      'published' => $settings['published'],
-    ))
-    ->condition('id', 0)
-    ->execute();
-
-  return $result;
-}
-
-/**
- * Returns an array with the module's current settings from the database.
- *
- * @return array
- *   Partly serialized arrays containing module settings from db
- *   or FALSE if no data in table (module just installed) or error.
- */
-function session_node_access_get_settings() {
-  $result = db_query('SELECT * FROM {session_node_access} WHERE id = 0');
-
-  $settings = array();
-  while ($row = $result->fetchAssoc()) {
-    $settings[] = $row;
-  }
-
-  if (isset($settings[0])) {
-    unset($settings[0]['id']);
-    $unserialize_all = array('content_types', 'permissions', 'user_roles');
-    foreach ($unserialize_all as $unserialize_this) {
-      $settings[0][$unserialize_this]
-        = unserialize($settings[0][$unserialize_this]);
-      if (!is_array($settings[0][$unserialize_this])) {
-        return FALSE;
-      }
-    }
-  }
-  else {
-    return FALSE;
-  }
-
-  return $settings[0];
 }
 
 /**
@@ -331,8 +264,7 @@ function session_node_access_node_insert($node) {
 function session_node_access_node_access($node, $op, $account) {
   if (isset($node->type) &&
     isset($_SESSION['session_node_access']['nodes_created'])) {
-
-    $settings = session_node_access_get_settings();
+    $settings  = variable_get('session_node_access_settings', FALSE);
     if (!$settings) {
       // Save log entry informing about error getting values from the database.
       $errormsg = t('Session node_access module failed to fetch its
