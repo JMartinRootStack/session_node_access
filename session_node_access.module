@@ -120,7 +120,11 @@ function session_node_access_form($form, &$form_state) {
   );
 
   // Prepare permissions settings for display.
-  $permissions = array('view' => t('View'), 'update' => t('Update'), 'delete' => t('Delete'));
+  $permissions = array(
+    'view' => t('View'),
+    'update' => t('Update'),
+    'delete' => t('Delete')
+  );
   $default_value = array();
   foreach ($permissions as $permission => $human_permission) {
     if (isset($settings['permissions'][$permission]) && $settings['permissions'][$permission] == 1) {
@@ -196,7 +200,8 @@ function session_node_access_form_submit($form, &$form_state) {
  * @param string $op
  *   The user operation for which to check access (view/update/delete).
  * @param object $account
- *   The user to be checked for access to the node. If not provided, current user is taken.
+ *   The user to be checked for access to the node.
+ *   If not provided, current user is taken.
  *
  * @return bool
  *   True if user has access, false if they do not.
