@@ -123,7 +123,7 @@ function session_node_access_form($form, &$form_state) {
   $permissions = array(
     'view' => t('View'),
     'update' => t('Update'),
-    'delete' => t('Delete')
+    'delete' => t('Delete'),
   );
   $default_value = array();
   foreach ($permissions as $permission => $human_permission) {
