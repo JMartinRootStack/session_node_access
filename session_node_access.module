@@ -25,7 +25,7 @@ function session_node_access_menu() {
   $items = array();
 
   // Admin configuration - Settings.
-  $items['admin/config/session_node_access'] = array(
+  $items['admin/config/content/session_node_access'] = array(
     'title' => 'Session based access',
     'description' => 'Grant per-session permissions for users to access nodes they created.',
     'access arguments' => array('administer session node access'),
