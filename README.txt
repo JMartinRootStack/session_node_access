@@ -28,8 +28,8 @@ as well.
 INSTALLATION
 ------------
 * Install as usual, see
-https://drupal.org/documentation/install/modules-themes/modules-7 for furtheri
-nformation.
+https://drupal.org/documentation/install/modules-themes/modules-7 for further
+information.
   
 CONFIGURATION
 -------------
@@ -44,7 +44,7 @@ other access control modules and the permissions tab if something does is not
 working as expected.
 
 * In order to have access to the module settings you need to grant it the
-appropriate permimssions in the permissions overview.
+appropriate permissions in the permissions overview.
 * To configure the module, click on 'configure' next to its entry on the module
 overview page or visit the link admin/config/session_node_access.
 
