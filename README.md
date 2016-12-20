@@ -28,8 +28,8 @@ as well.
 INSTALLATION
 ------------
 * Install as usual, see
-https://drupal.org/documentation/install/modules-themes/modules-7 for further
-information.
+https://www.drupal.org/documentation/install/modules-themes/modules-8 for
+further information.
   
 CONFIGURATION
 -------------
@@ -46,7 +46,7 @@ working as expected.
 * In order to have access to the module settings you need to grant it the
 appropriate permissions in the permissions overview.
 * To configure the module, click on 'configure' next to its entry on the module
-overview page or visit the link admin/config/session_node_access.
+overview page or visit the link admin/people/session_node_access.
 
 * Restrict by user roles: Only users with these roles will be given access to
 their content right after creation.
