@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\Core\Routing\RouteMatchInterface;
+
 /**
  * Implements hook_help().
  */
@@ -7,7 +9,6 @@ function session_node_access_help($route_name, RouteMatchInterface $route_match)
   return $route_name === 'help.page.session_node_access' ?
     check_markup(file_get_contents(dirname(__FILE__) . "/README.md")) : NULL;
 }
-
 /**
  * Implements hook_node_access().
  *
