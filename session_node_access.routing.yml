@@ -1,5 +1,5 @@
 session_node_access.settings:
-  path: '/admin/people/session_node_access'
+  path: '/admin/config/people/session_node_access'
   defaults:
     _form: '\Drupal\session_node_access\Form\SessionNodeAccessSettingsForm'
     _title: 'Session node access'
