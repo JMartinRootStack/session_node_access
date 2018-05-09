@@ -45,15 +45,23 @@ working as expected.
 
 * In order to have access to the module settings you need to grant it the
 appropriate permissions in the permissions overview.
+
 * To configure the module, click on 'configure' next to its entry on the module
 overview page or visit the link admin/people/session_node_access.
 
-* Restrict by user roles: Only users with these roles will be given access to
+  * Restrict by user roles: Only users with these roles will be given access to
 their content right after creation.
-* Restrict by content type: here you can alter the modules functionality by
+
+  * Restrict by content type: Here you can alter the modules functionality by
 restricting it to certain content types.
-* Grant these permissions: The permissions to be granted by the module can be
+
+  * Grant these permissions: The permissions to be granted by the module can be
 set here.
-* Take efffect only on published nodes: Set whether the access permissions
+
+  * Take effect only on published nodes: Set whether the access permissions
 granting is to be perfomed on published nodes only or on published and
 unpublished ones.
+
+  * Change ownership of nodes to newly registered user: As soon as an anonymous
+user register an account, grant that account ownership of nodes the user had
+session access to.

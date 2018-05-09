@@ -1,6 +1,7 @@
 <?php
 
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Config\Config;
 
 /**
  * Implements hook_help().
@@ -9,6 +10,7 @@ function session_node_access_help($route_name, RouteMatchInterface $route_match)
   return $route_name === 'help.page.session_node_access' ?
     check_markup(file_get_contents(dirname(__FILE__) . "/README.md")) : NULL;
 }
+
 /**
  * Implements hook_node_access().
  *
@@ -16,35 +18,29 @@ function session_node_access_help($route_name, RouteMatchInterface $route_match)
  * on settings) in case they created it in their current session.
  */
 function session_node_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal\Core\Session\AccountInterface $account) {
-  if (session_node_access_user_node_access($node, $op, $account)) {
 
-    // Grant access for this user to this node user.
-    return \Drupal\Core\Access\AccessResult::allowed();
-  }
-  return \Drupal\Core\Access\AccessResult::neutral();
+  return session_node_access_user_node_access($node, $op, $account)
+    ? \Drupal\Core\Access\AccessResult::allowed()
+    : \Drupal\Core\Access\AccessResult::neutral();
 }
 
-
 /**
- * Implements hook_entity_insert().
+ * Implements hook_ENTITY_TYPE_insert().
  *
  * Makes sure that content created by users gets referenced in their
  * session variable to be checked for in hook_node_access.
+ * @param \Drupal\Core\Entity\EntityInterface $node
  */
-function session_node_access_entity_insert(Drupal\Core\Entity\EntityInterface $node) {
-  if ($node->getEntityType()->id() != 'node') {
-    return;
-  }
+function session_node_access_node_insert(Drupal\Core\Entity\EntityInterface $node) {
+
+  /** @var Config $config */
   $config = \Drupal::config('session_node_access.settings');
 
-  if (isset($config->get('node_types')[$node->getType()]) && $config->get('node_types')[$node->getType()]) {
-    $account = \Drupal::currentUser();
-    if (is_array($config->get('user_roles'))) {
-      foreach ($account->getRoles() as $role_id) {
-        if (isset($config->get('user_roles')[$role_id]) && $config->get('user_roles')[$role_id]) {
-          $_SESSION['session_node_access']['nodes_created'][] = $node->id();
-          break;
-        }
+  if (!empty($config->get('node_types')[$node->getType()])) {
+    foreach (\Drupal::currentUser()->getRoles() as $role_id) {
+      if (!empty($config->get('user_roles')[$role_id])) {
+        $_SESSION['session_node_access']['nodes_created'][] = $node->id();
+        break;
       }
     }
   }
@@ -69,23 +65,48 @@ function session_node_access_user_node_access(\Drupal\node\NodeInterface $node, 
     return FALSE;
   }
 
+  /** @var Config $config */
   $config = \Drupal::config('session_node_access.settings');
 
   // Check if settings allow granting permissions to this node.
-  if (isset($config->get('operations')[$op]) && $config->get('operations')[$op]) {
-    if (isset($config->get('node_types')[$node->getType()]) && $config->get('node_types')[$node->getType()]) {
-      if (is_array($config->get('user_roles'))) {
-        foreach ($account->getRoles() as $role_id) {
-          if (isset($config->get('user_roles')[$role_id]) && $config->get('user_roles')[$role_id]) {
-            if (!$config->get('published') || $node->isPublished()) {
-              if (in_array($node->id(), $_SESSION['session_node_access']['nodes_created'])) {
-                return TRUE;
-              }
+  if (!empty($config->get('operations')[$op])) {
+    if (!empty($config->get('node_types')[$node->getType()])) {
+      foreach ($account->getRoles() as $role_id) {
+        if (!empty($config->get('user_roles')[$role_id])) {
+          if (empty($config->get('published')) || $node->isPublished()) {
+            if (in_array($node->id(), $_SESSION['session_node_access']['nodes_created'])) {
+              return TRUE;
             }
           }
         }
       }
     }
   }
+
   return FALSE;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+ * @throws \Drupal\Core\Entity\EntityStorageException
+ */
+function session_node_access_user_insert(Drupal\Core\Entity\EntityInterface $entity) {
+  if (empty($_SESSION['session_node_access']['nodes_created'])) {
+    return;
+  }
+
+  if (!empty(\Drupal::config('session_node_access.settings')->get('change_ownership'))) {
+
+    /** @var \Drupal\node\NodeInterface[] $nodes */
+    $nodes = \Drupal::entityTypeManager()->getStorage('node')
+      ->loadMultiple($_SESSION['session_node_access']['nodes_created']);
+    foreach ($nodes as $node) {
+      /** @var \Drupal\user\UserInterface  $entity */
+      $node->setOwner($entity)->save();
+      unset($_SESSION['session_node_access']['nodes_created'][$node->id()]);
+    }
+  }
 }
