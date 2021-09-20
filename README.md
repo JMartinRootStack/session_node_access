@@ -1,5 +1,13 @@
-INTRODUCTION
-------------
+## CONTENTS OF THIS FILE ##
+
+* Introduction
+* Installation
+* Configuration
+* Requirements
+* Maintainers
+
+## INTRODUCTION ##
+
 This module grants per-session permissions for users to access nodes
 they created.
 
@@ -20,19 +28,18 @@ node.
 
 In case of non-anonymous roles it is possible to set 'view own unpublished
 content' in Drupal 7 so the use of this module is not necessary.
-However in marginal cases one may still want for the users to have access to
+However, in marginal cases one may still want for the users to have access to
 the node only after submission, or wouldn't like to grant 'view own
 unpublished' for all content types. In this scenario this module may be helpful
 as well.
-  
-INSTALLATION
-------------
-* Install as usual, see
-https://www.drupal.org/documentation/install/modules-themes/modules-8 for
-further information.
-  
-CONFIGURATION
--------------
+
+## INSTALLATION ##
+
+See https://www.drupal.org/documentation/install/modules-themes/modules-8
+for instructions on how to install or update Drupal modules.
+
+## CONFIGURATION ##
+
 * ATTN: This module will not work if another content access module (or drupal's
 native permission tab) doesn't grant set users to create nodes of a given
 type. The module will check if the users have this permission and will
@@ -59,9 +66,18 @@ restricting it to certain content types.
 set here.
 
   * Take effect only on published nodes: Set whether the access permissions
-granting is to be perfomed on published nodes only or on published and
+granting is to be performed on published nodes only or on published and
 unpublished ones.
 
   * Change ownership of nodes to newly registered user: As soon as an anonymous
 user register an account, grant that account ownership of nodes the user had
 session access to.
+
+## REQUIREMENTS ##
+
+ None.
+
+## MAINTAINERS ##
+
+Current maintainers:
+* Pawel Ginalski (gbyte) - https://www.drupal.org/u/gbyte

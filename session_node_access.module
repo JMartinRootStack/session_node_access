@@ -1,14 +1,23 @@
 <?php
 
+/**
+ * @file
+ * Main module file containing hooks.
+ */
+
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\Core\Config\Config;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Implements hook_help().
  */
 function session_node_access_help($route_name, RouteMatchInterface $route_match) {
-  return $route_name === 'help.page.session_node_access' ?
-    check_markup(file_get_contents(dirname(__FILE__) . "/README.md")) : NULL;
+  return $route_name === 'help.page.simple_sitemap'
+    ? check_markup(file_get_contents(__DIR__ . '/README.md'))
+    : NULL;
 }
 
 /**
@@ -17,11 +26,10 @@ function session_node_access_help($route_name, RouteMatchInterface $route_match)
  * Grants access to users to view/edit/delete a node (depending
  * on settings) in case they created it in their current session.
  */
-function session_node_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal\Core\Session\AccountInterface $account) {
-
+function session_node_access_node_access(NodeInterface $node, $op, AccountInterface $account) {
   return session_node_access_user_node_access($node, $op, $account)
-    ? \Drupal\Core\Access\AccessResult::allowed()
-    : \Drupal\Core\Access\AccessResult::neutral();
+    ? AccessResult::allowed()
+    : AccessResult::neutral();
 }
 
 /**
@@ -29,11 +37,8 @@ function session_node_access_node_access(\Drupal\node\NodeInterface $node, $op, 
  *
  * Makes sure that content created by users gets referenced in their
  * session variable to be checked for in hook_node_access.
- * @param \Drupal\Core\Entity\EntityInterface $node
  */
-function session_node_access_node_insert(Drupal\Core\Entity\EntityInterface $node) {
-
-  /** @var Config $config */
+function session_node_access_node_insert(NodeInterface $node) {
   $config = \Drupal::config('session_node_access.settings');
 
   if (!empty($config->get('node_types')[$node->getType()])) {
@@ -47,10 +52,10 @@ function session_node_access_node_insert(Drupal\Core\Entity\EntityInterface $nod
 }
 
 /**
- * Checks if currently logged in user has access to a node.
+ * Checks if currently logged-in user has access to a node.
  *
  * @param \Drupal\node\NodeInterface $node
- *   The node to be checked if accessible by currently logged in user.
+ *   The node to be checked if accessible by currently logged-in user.
  * @param string $op
  *   The user operation for which to check access (view/update/delete).
  * @param \Drupal\Core\Session\AccountInterface $account
@@ -60,12 +65,11 @@ function session_node_access_node_insert(Drupal\Core\Entity\EntityInterface $nod
  * @return bool
  *   True if user has access, false if they do not.
  */
-function session_node_access_user_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal\Core\Session\AccountInterface $account) {
+function session_node_access_user_node_access(NodeInterface $node, $op, AccountInterface $account) {
   if (!isset($_SESSION['session_node_access']['nodes_created'])) {
     return FALSE;
   }
 
-  /** @var Config $config */
   $config = \Drupal::config('session_node_access.settings');
 
   // Check if settings allow granting permissions to this node.
@@ -74,7 +78,7 @@ function session_node_access_user_node_access(\Drupal\node\NodeInterface $node, 
       foreach ($account->getRoles() as $role_id) {
         if (!empty($config->get('user_roles')[$role_id])) {
           if (empty($config->get('published')) || $node->isPublished()) {
-            if (in_array($node->id(), $_SESSION['session_node_access']['nodes_created'])) {
+            if (in_array($node->id(), $_SESSION['session_node_access']['nodes_created'], FALSE)) {
               return TRUE;
             }
           }
@@ -88,12 +92,8 @@ function session_node_access_user_node_access(\Drupal\node\NodeInterface $node, 
 
 /**
  * Implements hook_ENTITY_TYPE_insert().
- *
- * @param \Drupal\Core\Entity\EntityInterface $entity
- * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
- * @throws \Drupal\Core\Entity\EntityStorageException
  */
-function session_node_access_user_insert(Drupal\Core\Entity\EntityInterface $entity) {
+function session_node_access_user_insert(EntityInterface $entity) {
   if (empty($_SESSION['session_node_access']['nodes_created'])) {
     return;
   }
