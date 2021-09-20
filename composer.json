@@ -5,9 +5,9 @@
   "homepage": "https://drupal.org/project/session_node_access",
   "authors": [
     {
-      "name": "Pawel Ginalski (gbyte.co)",
-      "email": "contact@gbyte.co",
-      "homepage": "https://www.drupal.org/u/gbyte.co",
+      "name": "Pawel Ginalski (gbyte)",
+      "email": "contact@gbyte.dev",
+      "homepage": "https://www.drupal.org/u/gbyte",
       "role": "Maintainer"
     }
   ],
@@ -16,7 +16,7 @@
     "irc": "irc://irc.freenode.org/drupal-contribute",
     "source": "https://cgit.drupalcode.org/session_node_access"
   },
-  "license": "GPL-2.0+",
+  "license": "GPL-2.0-or-later",
   "minimum-stability": "dev",
   "require": { }
 }
