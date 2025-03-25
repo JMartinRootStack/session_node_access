@@ -4,6 +4,7 @@ namespace Drupal\session_node_access\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\user\Entity\Role;
 
 /**
  * Class SessionNodeAccessSettingsForm.
@@ -84,7 +85,7 @@ class SessionNodeAccessSettingsForm extends ConfigFormBase {
     // Display user role settings.
     $default_value = [];
     $options = [];
-    foreach (user_roles() as $role_id => $role) {
+    foreach (Role::loadMultiple() as $role_id => $role) {
       if (!empty($config->get('user_roles')[$role_id])) {
         $default_value[] = $role_id;
       }
